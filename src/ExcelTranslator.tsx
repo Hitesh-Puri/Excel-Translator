@@ -5,8 +5,9 @@ import { Alert, AlertDescription } from "./components/ui/alert";
 import { Button } from "./components/ui/button";
 import { Loader } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
+import axios from "axios";
 
-const LANGUAGES = {
+const LANGUAGES: any = {
   en: "English",
   es: "Spanish",
   fr: "French",
@@ -69,7 +70,7 @@ const ExcelTranslator = () => {
           console.log("headers :>> ", headers);
           console.log("data :>> ", data);
           setSelectedColumns(headers);
-          setPreview(data.slice(0, 25));
+          setPreview(data.slice(0, 10));
           setFileContent(content);
         } catch (err) {
           setError("Error parsing file. Please ensure it's a valid CSV file.");
@@ -109,22 +110,34 @@ const ExcelTranslator = () => {
       setLoading(true);
       setError("");
 
-      // Simulated translation process
-      // In a real implementation, you would send the content to your backend
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
       const { headers, data } = parseCSVContent(fileContent);
 
-      // Add translated columns (mock translation)
-      const translatedData = data.map((row: any) => {
+      const translatedData = [];
+      for (const row of data) {
         const newRow = { ...row };
-        selectedColumns.forEach((col) => {
-          newRow[`${col}_${targetLang}`] = `${row[col]}_translated`;
-        });
-        return newRow;
-      });
+        for (const col of selectedColumns) {
+          const text = row[col];
 
-      // Create CSV content
+          // Make a request to the backend to use Azure OpenAI for translation
+          try {
+            const response = await axios.post(
+              `${process.env.REACT_APP_BACKEND_BASE_URL}/api/translate`,
+              {
+                text,
+                targetLang,
+              }
+            );
+            const translatedText = response.data.translatedText;
+            newRow[`${col}_${targetLang}`] = translatedText;
+          } catch (error: any) {
+            console.error("Translation error:", error);
+            setError("Error during translation. Please try again.");
+            throw error;
+          }
+        }
+        translatedData.push(newRow);
+      }
+
       const allHeaders = [...headers];
       selectedColumns.forEach((col) => {
         allHeaders.push(`${col}_${targetLang}`);
@@ -132,7 +145,7 @@ const ExcelTranslator = () => {
 
       const csvContent = [
         allHeaders.join(","),
-        ...translatedData.map((row: any) =>
+        ...translatedData.map((row) =>
           allHeaders.map((header) => row[header] || "").join(",")
         ),
       ].join("\n");
@@ -170,7 +183,7 @@ const ExcelTranslator = () => {
             onChange={(e) => setTargetLang(e.target.value)}
             className="w-full p-2 border border-gray-300 rounded-lg"
           >
-            {Object.entries(LANGUAGES).map(([code, name]) => (
+            {Object.entries(LANGUAGES).map(([code, name]: any) => (
               <option key={code} value={code}>
                 {name}
               </option>
