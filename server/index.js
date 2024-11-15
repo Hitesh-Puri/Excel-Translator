@@ -23,4 +23,8 @@ app.post("/api/translate", async (req, res) => {
   }
 });
 
+app.get("/api", async (req, res) => {
+  res.json({ message: "Azure Translation API" });
+});
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

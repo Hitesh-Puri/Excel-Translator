@@ -29,6 +29,7 @@ const ExcelTranslator = () => {
   const [columns, setColumns] = useState([]);
   const [selectedColumns, setSelectedColumns] = useState([]);
 
+  //#region ParseCSVFile
   const parseCSVContent = (content: any) => {
     const lines = content.split("\n");
     const headers = lines[0].split(",").map((header: any) => header.trim());
@@ -44,7 +45,9 @@ const ExcelTranslator = () => {
       .filter((row: any) => Object.values(row).some((value) => value));
     return { headers, data };
   };
+  //#endregion ParseCSVFile
 
+  //#region Upload
   const handleFileUpload = (e: any) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -67,8 +70,6 @@ const ExcelTranslator = () => {
           const { headers, data } = parseCSVContent(content);
 
           setColumns(headers);
-          console.log("headers :>> ", headers);
-          console.log("data :>> ", data);
           setSelectedColumns(headers);
           setPreview(data.slice(0, 10));
           setFileContent(content);
@@ -84,25 +85,42 @@ const ExcelTranslator = () => {
         setLoading(false);
       };
 
-      reader.readAsText(file);
+      reader.readAsText(file, "UTF-8");
     } catch (err) {
       setError("Error reading file. Please try again.");
       setLoading(false);
     }
   };
+  //#endregion Upload
 
+  //#region Download
   const downloadTranslatedFile = (content: any) => {
-    const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+    // Add BOM(Byte Order Mark) for UTF-8
+    const BOM = "\uFEFF";
+    const contentWithBOM = BOM + content;
+
+    // Create blob with UTF-8 encoding
+    const blob = new Blob([contentWithBOM], {
+      type: "text/csv;charset=UTF-8",
+    });
+
+    // Create download link
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `translated_file_${targetLang}.csv`;
+
+    // Trigger download
     document.body.appendChild(a);
     a.click();
+
+    // Cleanup
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
   };
+  //#endregion Download
 
+  //#region TranslateAPI
   const translateContent = async () => {
     if (!fileContent || !selectedColumns.length) return;
 
@@ -125,6 +143,12 @@ const ExcelTranslator = () => {
               {
                 text,
                 targetLang,
+              },
+              {
+                headers: {
+                  "Content-Type": "application/json;charset=UTF-8",
+                  Accept: "application/json;charset=UTF-8",
+                },
               }
             );
             const translatedText = response.data.translatedText;
@@ -146,7 +170,15 @@ const ExcelTranslator = () => {
       const csvContent = [
         allHeaders.join(","),
         ...translatedData.map((row) =>
-          allHeaders.map((header) => row[header] || "").join(",")
+          allHeaders
+            .map((header) => {
+              const cellContent = row[header] || "";
+              // Escape commas and quotes in the content
+              return cellContent.includes(",") || cellContent.includes('"')
+                ? `"${cellContent.replace(/"/g, '""')}"`
+                : cellContent;
+            })
+            .join(",")
         ),
       ].join("\n");
 
@@ -157,6 +189,7 @@ const ExcelTranslator = () => {
       setLoading(false);
     }
   };
+  //#endregion TranslateAPI
 
   return (
     <Card className="w-full max-w-4xl mx-auto">
@@ -224,7 +257,7 @@ const ExcelTranslator = () => {
         {/* Preview */}
         {preview.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-medium">Preview (First 5 rows)</h3>
+            <h3 className="text-sm font-medium">Preview (First 10 rows)</h3>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead>

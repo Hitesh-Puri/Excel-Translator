@@ -29,10 +29,10 @@ async function getAzureTranslation(text, targetLang) {
       },
       {
         role: "user",
-        content: `Translate the given text to ${targetLang} without providing any addtional information: "${text}"`,
+        content: `Please translate the following text to ${targetLang} without any additional commentary or context. Only return the translated text: '${text}'`,
       },
     ],
-    max_tokens: 18000,
+    max_tokens: 800,
     temperature: 0.7,
   });
 
