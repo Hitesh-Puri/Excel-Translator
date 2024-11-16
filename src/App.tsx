@@ -1,11 +1,11 @@
 import ExcelTranslator from "./ExcelTranslator";
 
-function App() {
+const App = () => {
   return (
     <div>
       <ExcelTranslator />
     </div>
   );
-}
+};
 
 export default App;
